@@ -6,7 +6,7 @@ General project guide and technology stack reference for this repository.
 
 This repository is a browser extension built with WXT (React) and Bun that acts as an AI Client for any OpenAI-API-compatible endpoint. The UI is rendered inside a browser side panel. Users configure a base URL, an API key, and pick a model; the extension then exposes a chat interface with streaming responses, thinking/reasoning display, and file upload.
 
-Detailed product behavior, feature scope, and data shapes are defined in [prd.md](./prd.md). This file describes the technical foundation, conventions, and hard rules for any agent working in this codebase.
+This file describes the technical foundation, conventions, and hard rules for any agent working in this codebase.
 
 ## Technology Stack
 
