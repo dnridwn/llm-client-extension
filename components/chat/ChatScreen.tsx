@@ -1,12 +1,13 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, type DragEvent } from 'react';
 import {
   CleanIcon,
+  FileUploadIcon,
   Settings01Icon,
 } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon, type IconSvgElement } from '@hugeicons/react';
 import { Button } from '@/components/ui/button';
 import { MessageList } from '@/components/chat/MessageList';
-import { ChatComposer } from '@/components/chat/ChatComposer';
+import { ChatComposer, type ChatComposerHandle } from '@/components/chat/ChatComposer';
 import {
   streamChatCompletion,
   ChatRequestError,
@@ -53,6 +54,36 @@ export function ChatScreen({ onOpenSettings }: ChatScreenProps) {
   const disableToolsRef = useRef(false);
   const mcpReadyRef = useRef(false);
   const [mcpToolsCount, setMcpToolsCount] = useState(0);
+
+  const composerRef = useRef<ChatComposerHandle>(null);
+  const [isDragActive, setIsDragActive] = useState(false);
+  const dragCounterRef = useRef(0);
+
+  function handleDragEnter(e: DragEvent<HTMLDivElement>) {
+    if (!e.dataTransfer.types.includes('Files')) return;
+    dragCounterRef.current += 1;
+    setIsDragActive(true);
+  }
+
+  function handleDragOver(e: DragEvent<HTMLDivElement>) {
+    if (!e.dataTransfer.types.includes('Files')) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'copy';
+  }
+
+  function handleDragLeave() {
+    dragCounterRef.current = Math.max(0, dragCounterRef.current - 1);
+    if (dragCounterRef.current === 0) setIsDragActive(false);
+  }
+
+  function handleDrop(e: DragEvent<HTMLDivElement>) {
+    if (!e.dataTransfer.types.includes('Files')) return;
+    e.preventDefault();
+    dragCounterRef.current = 0;
+    setIsDragActive(false);
+    const files = Array.from(e.dataTransfer.files ?? []);
+    if (files.length > 0) composerRef.current?.addFiles(files);
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -473,7 +504,29 @@ export function ChatScreen({ onOpenSettings }: ChatScreenProps) {
   }
 
   return (
-    <div className="flex h-screen flex-col bg-background">
+    <div
+      className="relative flex h-screen flex-col bg-background"
+      onDragEnter={handleDragEnter}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+    >
+      {isDragActive && (
+        <div className="pointer-events-none absolute inset-0 z-50 flex items-center justify-center bg-background/80 p-6">
+          <div className="flex flex-col items-center gap-3 rounded-xl border-2 border-dashed border-primary/60 bg-card/80 p-8 text-center shadow-lg">
+            <HugeiconsIcon
+              icon={FileUploadIcon as IconSvgElement}
+              className="size-10 text-primary"
+            />
+            <div>
+              <p className="text-sm font-medium">Drop files to attach</p>
+              <p className="text-xs text-muted-foreground">
+                Images (png/jpg/gif/webp), PDF, txt, md, csv, json, xml, html
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
       <header className="flex items-center gap-2 border-b px-3 py-2">
         <span className="truncate text-xs text-muted-foreground">
           {settings.model}
@@ -512,6 +565,7 @@ export function ChatScreen({ onOpenSettings }: ChatScreenProps) {
       />
 
       <ChatComposer
+        ref={composerRef}
         isStreaming={isStreaming}
         onSend={handleSend}
         onStop={handleStop}

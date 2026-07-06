@@ -131,6 +131,26 @@ export function checkPayloadSize(attachments: Attachment[]): void {
   }
 }
 
+export async function ingestFiles(
+  files: File[],
+  existing: Attachment[],
+): Promise<{ attachments: Attachment[]; errors: string[] }> {
+  const next: Attachment[] = [];
+  const errors: string[] = [];
+  for (const file of files) {
+    try {
+      const att = await fileToAttachment(file);
+      next.push(att);
+    } catch (err) {
+      errors.push(
+        `${file.name}: ${err instanceof Error ? err.message : String(err)}`,
+      );
+    }
+  }
+  checkPayloadSize([...existing, ...next]);
+  return { attachments: next, errors };
+}
+
 export function buildMessageContent(
   text: string,
   attachments: Attachment[],

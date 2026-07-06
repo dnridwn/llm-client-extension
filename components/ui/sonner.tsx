@@ -7,6 +7,7 @@ import {
   Alert02Icon,
   MultiplicationSignCircleIcon,
   Loading03Icon,
+  Cancel01Icon,
 } from '@hugeicons/core-free-icons';
 
 function useSystemTheme(): 'light' | 'dark' {
@@ -29,6 +30,13 @@ const Toaster = ({ ...props }: ToasterProps) => {
       theme={theme}
       className="toaster group"
       icons={{
+        close: (
+          <HugeiconsIcon
+            icon={Cancel01Icon}
+            strokeWidth={2}
+            className="size-4"
+          />
+        ),
         success: (
           <HugeiconsIcon
             icon={CheckmarkCircle02Icon}

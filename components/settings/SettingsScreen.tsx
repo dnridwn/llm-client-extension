@@ -10,6 +10,7 @@ import {
   AlertCircleIcon,
   UnfoldMoreIcon,
   Tick02Icon,
+  Refresh01Icon,
 } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon, type IconSvgElement } from '@hugeicons/react';
 import { Button } from '@/components/ui/button';
@@ -36,6 +37,7 @@ import {
   CommandEmpty,
 } from '@/components/ui/command';
 import { McpServersSection } from '@/components/settings/McpServersSection';
+import { cn } from '@/lib/utils';
 import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
 import { Slider } from '@/components/ui/slider';
@@ -76,6 +78,7 @@ export function SettingsScreen({ settings, onSave, onBack }: SettingsScreenProps
   );
   const [mcpServers, setMcpServers] = useState(settings.mcpServers ?? []);
   const [isTesting, setIsTesting] = useState(false);
+  const [isFetching, setIsFetching] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
@@ -119,6 +122,27 @@ export function SettingsScreen({ settings, onSave, onBack }: SettingsScreenProps
       toast.error(`Connection failed: ${msg}`);
     } finally {
       setIsTesting(false);
+    }
+  }
+
+  async function handleFetchModels() {
+    if (!urlValid) {
+      toast.error('Base URL must start with http:// or https://');
+      return;
+    }
+    setIsFetching(true);
+    try {
+      const models = await fetchModels(baseUrl, apiKey);
+      setAvailableModels(models);
+      if (models.length > 0 && !isManual && !models.includes(model)) {
+        setModel(models[0]);
+      }
+      toast.success(`${models.length} model(s) fetched`);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Unknown error';
+      toast.error(`Fetch failed: ${msg}`);
+    } finally {
+      setIsFetching(false);
     }
   }
 
@@ -178,7 +202,7 @@ export function SettingsScreen({ settings, onSave, onBack }: SettingsScreenProps
           <span className="text-sm font-semibold">Settings</span>
         </header>
       )}
-      <div className={onBack ? 'w-full p-4 space-y-5' : 'w-full max-w-md my-auto mx-auto p-4 space-y-5'}>
+      <div className={onBack ? 'w-full max-w-md my-auto mx-auto p-4 space-y-5' : 'w-full max-w-md my-auto mx-auto p-4 space-y-5'}>
       <div className="space-y-1">
         <h2 className="flex items-center gap-2 text-xl font-semibold">
           <HugeiconsIcon
@@ -296,11 +320,27 @@ export function SettingsScreen({ settings, onSave, onBack }: SettingsScreenProps
                 </PopoverContent>
               </Popover>
             )}
-            {availableModels.length > 0 && !isManual && (
-              <Badge variant="secondary" className="text-xs">
-                {availableModels.length} available
-              </Badge>
-            )}
+            <div className="flex items-center justify-between gap-2">
+              {!isManual && (
+                <Button
+                  variant="outline"
+                  size="xs"
+                  onClick={handleFetchModels}
+                  disabled={isFetching || !urlValid}
+                >
+                  <HugeiconsIcon
+                    icon={Refresh01Icon as IconSvgElement}
+                    className={cn('size-3.5', isFetching && 'animate-spin')}
+                  />
+                  {isFetching ? 'Fetching…' : 'Fetch models'}
+                </Button>
+              )}
+              {availableModels.length > 0 && !isManual && (
+                <Badge variant="secondary" className="text-xs">
+                  {availableModels.length} available
+                </Badge>
+              )}
+            </div>
           </div>
 
           <Separator />

@@ -26,7 +26,7 @@ function App() {
       ) : (
         <ChatScreen onOpenSettings={() => setView('settings')} />
       )}
-      <Toaster position="top-center" />
+      <Toaster position="top-center" closeButton />
     </TooltipProvider>
   );
 }

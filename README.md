@@ -29,6 +29,8 @@ LLM Client is a Manifest V3 extension whose entire UI lives in the browser side 
 - Images (png/jpeg/gif/webp) sent as `image_url` content parts for vision models
 - PDF text extraction via `pdfjs-dist`, inlined into the message text
 - Text files: txt, md, csv, json, xml, html
+- Drag-and-drop one or more files anywhere onto the side panel to attach them
+- Paste a copied image (`Cmd/Ctrl+V`) into the composer textarea to attach it; plain-text paste still inserts text normally
 - 20 MB payload guard with `PayloadTooLargeError`
 - Attachment chips with thumbnails and sizes
 
@@ -157,7 +159,7 @@ After `bun run build`, load the unpacked extension from `.output/chrome-mv3` (or
 ## Known Limitations
 
 - MCP tool loop is capped at 10 turns per user message.
-- File payload is capped at 20 MB total per message.
+- File payload is capped at 20 MB total per message; the same limit applies to dragged-and-dropped and pasted files, which are persisted as base64 in `chrome.storage.local`.
 - Endpoints that do not support tool calling are retried once without tools (with a warning toast).
 - Theme follows the OS (`prefers-color-scheme`); there is no manual theme toggle in the UI.
 - The `popup/` and `content.ts` entrypoints are unused starter leftovers and do not affect the side-panel experience.
