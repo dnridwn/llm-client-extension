@@ -35,8 +35,8 @@ Key config sources of truth:
 .
 ├── assets/                 # tailwind.css, fonts, static assets
 ├── components/
-│   ├── chat/               # (planned) chat feature components
-│   ├── settings/           # (planned) settings feature components
+│   ├── chat/               # chat feature components (MessageBubble, ThinkingPanel, MermaidDiagram, markdown-components, ...)
+│   ├── settings/           # settings feature components (McpServersSection, McpToolsSection, ...)
 │   └── ui/                 # shadcn components (added via CLI, never hand-written)
 ├── entrypoints/
 │   ├── background.ts       # MV3 service worker
@@ -44,9 +44,9 @@ Key config sources of truth:
 │   ├── popup/              # popup entrypoint
 │   └── sidepanel/          # PRIMARY UI entrypoint (App.tsx, main.tsx, index.html)
 ├── lib/
-│   ├── api/                # (planned) OpenAI-compatible client + SSE parser
-│   ├── storage/            # (planned) typed storage.defineItem declarations
-│   ├── types/              # (planned) shared TS types
+│   ├── api/                # OpenAI-compatible client + SSE parser + MCP client
+│   ├── storage/            # typed storage.defineItem declarations
+│   ├── types/              # shared TS types
 │   └── utils.ts            # shadcn cn() helper
 ├── public/                 # static assets served at /
 ├── components.json         # shadcn config
@@ -69,7 +69,7 @@ These rules are mandatory for any agent editing this codebase.
    ```
    Never hand-write component implementations under `components/ui/`. The CLI is the only supported way to create or update them.
 3. **WXT auto-imports**: `defineBackground`, `defineContentScript`, `defineConfig`, `browser`, and `storage` are auto-imported by WXT. Do not add explicit imports for these.
-4. **Storage**: All persisted data MUST use `wxt/storage` with the `local:` prefix and be declared via `storage.defineItem<T>()` with an explicit type. Do not read/write raw `chrome.storage`.
+4. **Storage**: All persisted data MUST use `wxt/storage` with the `local:` prefix and be declared via `storage.defineItem<T>()` with an explicit type. Do not read/write raw `chrome.storage`. The `local:settings` item stores both user config (`mcpServers`) and the discovered-tool cache (`discoveredTools: McpToolsByServer`), keyed by server id.
 5. **UI location**: Keep all UI inside the `sidepanel` entrypoint and `components/`. Do not create new entrypoints unless asked.
 6. **Icons**: Use hugeicons only (already configured in `components.json`). Do not add lucide-react or other icon libraries.
 7. **No comments**: Do not add comments to code unless the user explicitly requests them.

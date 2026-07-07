@@ -1,38 +1,33 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { toast } from 'sonner';
 import {
   Add01Icon,
   Delete01Icon,
-  Cancel01Icon,
   GlobeIcon,
   Refresh01Icon,
-  Key01Icon,
-  ChevronDownIcon,
+  Edit02Icon,
 } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon, type IconSvgElement } from '@hugeicons/react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { Separator } from '@/components/ui/separator';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import { discoverTools, closeSession } from '@/lib/api/mcp';
+import { McpToolsSection } from '@/components/settings/McpToolsSection';
+import { McpServerForm } from '@/components/settings/McpServerForm';
 import type {
   McpServerConfig,
   McpHeader,
-  McpTransport,
+  McpToolsByServer,
 } from '@/lib/types';
 
 interface McpServersSectionProps {
   servers: McpServerConfig[];
   onChange: (servers: McpServerConfig[]) => void;
+  discoveredTools: McpToolsByServer;
+  onDiscoveredToolsChange: (
+    updater: (prev: McpToolsByServer) => McpToolsByServer,
+  ) => void;
 }
 
 const NAME_REGEX = /^[a-zA-Z][a-zA-Z0-9_-]*$/;
@@ -49,10 +44,17 @@ function blankServer(): McpServerConfig {
   };
 }
 
-export function McpServersSection({ servers, onChange }: McpServersSectionProps) {
+export function McpServersSection({
+  servers,
+  onChange,
+  discoveredTools,
+  onDiscoveredToolsChange,
+}: McpServersSectionProps) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draft, setDraft] = useState<McpServerConfig | null>(null);
   const [testing, setTesting] = useState<string | null>(null);
+  const [toolsLoading, setToolsLoading] = useState<Record<string, boolean>>({});
+  const reqCounterRef = useRef<Record<string, number>>({});
 
   function startAdd() {
     const s = blankServer();
@@ -101,6 +103,17 @@ export function McpServersSection({ servers, onChange }: McpServersSectionProps)
   function removeServer(id: string) {
     onChange(servers.filter((s) => s.id !== id));
     void closeSession(id);
+    onDiscoveredToolsChange((prev) => {
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
+    setToolsLoading((prev) => {
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
+    delete reqCounterRef.current[id];
   }
 
   function toggleEnabled(id: string, value: boolean) {
@@ -110,14 +123,43 @@ export function McpServersSection({ servers, onChange }: McpServersSectionProps)
 
   async function handleTest(s: McpServerConfig) {
     setTesting(s.id);
+    const reqId = (reqCounterRef.current[s.id] ?? 0) + 1;
+    reqCounterRef.current[s.id] = reqId;
+    setToolsLoading((prev) => ({ ...prev, [s.id]: true }));
     try {
       const tools = await discoverTools(s);
+      if (reqCounterRef.current[s.id] !== reqId) return;
+      onDiscoveredToolsChange((prev) => ({ ...prev, [s.id]: tools }));
       toast.success(`Connected — ${tools.length} tool(s) discovered`);
     } catch (err) {
+      if (reqCounterRef.current[s.id] !== reqId) return;
       const msg = err instanceof Error ? err.message : 'Connection failed';
       toast.error(`${s.name}: ${msg}`);
     } finally {
-      setTesting(null);
+      if (reqCounterRef.current[s.id] === reqId) {
+        setTesting(null);
+        setToolsLoading((prev) => ({ ...prev, [s.id]: false }));
+      }
+    }
+  }
+
+  async function handleDiscoverTools(s: McpServerConfig) {
+    const reqId = (reqCounterRef.current[s.id] ?? 0) + 1;
+    reqCounterRef.current[s.id] = reqId;
+    setToolsLoading((prev) => ({ ...prev, [s.id]: true }));
+    try {
+      const tools = await discoverTools(s);
+      if (reqCounterRef.current[s.id] !== reqId) return;
+      onDiscoveredToolsChange((prev) => ({ ...prev, [s.id]: tools }));
+      toast.success(`Connected — ${tools.length} tool(s) discovered`);
+    } catch (err) {
+      if (reqCounterRef.current[s.id] !== reqId) return;
+      const msg = err instanceof Error ? err.message : 'Connection failed';
+      toast.error(`${s.name}: ${msg}`);
+    } finally {
+      if (reqCounterRef.current[s.id] === reqId) {
+        setToolsLoading((prev) => ({ ...prev, [s.id]: false }));
+      }
     }
   }
 
@@ -165,165 +207,84 @@ export function McpServersSection({ servers, onChange }: McpServersSectionProps)
       )}
 
       <div className="space-y-2">
+        {draft && !servers.some((s) => s.id === draft.id) && (
+          <McpServerForm
+            draft={draft}
+            setDraft={setDraft}
+            onCancel={cancelEdit}
+            onSave={saveDraft}
+            addHeader={addHeader}
+            updateHeader={updateHeader}
+            removeHeader={removeHeader}
+          />
+        )}
+
         {servers.map((s) => (
-          <div
-            key={s.id}
-            className="flex items-center gap-2 rounded-md border px-3 py-2"
-          >
-            <HugeiconsIcon icon={GlobeIcon as IconSvgElement} className="size-4 text-muted-foreground" />
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-medium">{s.name}</p>
-              <p className="truncate text-xs text-muted-foreground">
-                {s.url} · {s.transport}
-              </p>
-            </div>
-            <Switch
-              checked={s.enabled}
-              onCheckedChange={(v) => toggleEnabled(s.id, v)}
-              aria-label="Enable server"
-            />
-            <Button
-              variant="ghost"
-              size="icon-xs"
-              onClick={() => handleTest(s)}
-              disabled={testing === s.id}
-              aria-label="Test"
-            >
-              <HugeiconsIcon
-                icon={Refresh01Icon as IconSvgElement}
-                className={cn('size-3.5', testing === s.id && 'animate-spin')}
+          <div key={s.id} className="rounded-md border px-3 py-2">
+            {editingId === s.id && draft ? (
+              <McpServerForm
+                draft={draft}
+                setDraft={setDraft}
+                onCancel={cancelEdit}
+                onSave={saveDraft}
+                addHeader={addHeader}
+                updateHeader={updateHeader}
+                removeHeader={removeHeader}
               />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon-xs"
-              onClick={() => startEdit(s)}
-              aria-label="Edit"
-            >
-              <HugeiconsIcon icon={GlobeIcon as IconSvgElement} className="size-3.5" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon-xs"
-              onClick={() => removeServer(s.id)}
-              aria-label="Delete"
-            >
-              <HugeiconsIcon icon={Delete01Icon as IconSvgElement} className="size-3.5" />
-            </Button>
-          </div>
-        ))}
-
-        {draft && (
-          <div className="rounded-md border p-3">
-            <div className="space-y-3">
-              <div className="space-y-1.5">
-                <Label htmlFor="mcp-name">Name</Label>
-                <Input
-                  id="mcp-name"
-                  value={draft.name}
-                  onChange={(e) => setDraft({ ...draft, name: e.target.value })}
-                  placeholder="github"
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <Label htmlFor="mcp-url">URL</Label>
-                <Input
-                  id="mcp-url"
-                  value={draft.url}
-                  onChange={(e) => setDraft({ ...draft, url: e.target.value })}
-                  placeholder="https://example.com/mcp"
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <Label>Transport</Label>
-                <Select
-                  value={draft.transport}
-                  onValueChange={(v) => setDraft({ ...draft, transport: v as McpTransport })}
-                >
-                  <SelectTrigger className="w-full">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="streamable-http">streamable-http</SelectItem>
-                    <SelectItem value="sse">sse</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <Separator />
-
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label className="text-sm">Headers</Label>
-                  <Button variant="ghost" size="xs" onClick={addHeader}>
-                    <HugeiconsIcon icon={Add01Icon as IconSvgElement} className="size-3.5" />
-                    Add header
+            ) : (
+              <>
+                <div className="flex items-center gap-2">
+                  <HugeiconsIcon icon={GlobeIcon as IconSvgElement} className="size-4 text-muted-foreground" />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium">{s.name}</p>
+                    <p className="truncate text-xs text-muted-foreground">
+                      {s.url} · {s.transport}
+                    </p>
+                  </div>
+                  <Switch
+                    checked={s.enabled}
+                    onCheckedChange={(v) => toggleEnabled(s.id, v)}
+                    aria-label="Enable server"
+                  />
+                  <Button
+                    variant="ghost"
+                    size="icon-xs"
+                    onClick={() => handleTest(s)}
+                    disabled={testing === s.id}
+                    aria-label="Test"
+                  >
+                    <HugeiconsIcon
+                      icon={Refresh01Icon as IconSvgElement}
+                      className={cn('size-3.5', testing === s.id && 'animate-spin')}
+                    />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon-xs"
+                    onClick={() => startEdit(s)}
+                    aria-label="Edit"
+                  >
+                    <HugeiconsIcon icon={Edit02Icon as IconSvgElement} className="size-3.5" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon-xs"
+                    onClick={() => removeServer(s.id)}
+                    aria-label="Delete"
+                  >
+                    <HugeiconsIcon icon={Delete01Icon as IconSvgElement} className="size-3.5" />
                   </Button>
                 </div>
-                {draft.headers.length === 0 && (
-                  <p className="text-xs text-muted-foreground">
-                    No custom headers. Add for authentication (e.g. Authorization).
-                  </p>
-                )}
-                {draft.headers.map((h) => (
-                  <div key={h.id} className="flex items-center gap-2">
-                    <Input
-                      placeholder="Header name"
-                      value={h.name}
-                      onChange={(e) => updateHeader(h.id, { name: e.target.value })}
-                      className="flex-1"
-                    />
-                    <Input
-                      placeholder="Header value"
-                      type={h.isSecret ? 'password' : 'text'}
-                      value={h.value}
-                      onChange={(e) => updateHeader(h.id, { value: e.target.value })}
-                      className="flex-1"
-                    />
-                    <Button
-                      variant="ghost"
-                      size="icon-xs"
-                      onClick={() => updateHeader(h.id, { isSecret: !h.isSecret })}
-                      aria-label="Toggle secret"
-                      title={h.isSecret ? 'Secret' : 'Plain'}
-                    >
-                      <HugeiconsIcon icon={Key01Icon as IconSvgElement} className="size-3.5" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon-xs"
-                      onClick={() => removeHeader(h.id)}
-                      aria-label="Remove header"
-                    >
-                      <HugeiconsIcon icon={Cancel01Icon as IconSvgElement} className="size-3.5" />
-                    </Button>
-                  </div>
-                ))}
-              </div>
-
-              <Separator />
-
-              <div className="flex items-center justify-between">
-                <Label className="text-sm">Enabled</Label>
-                <Switch
-                  checked={draft.enabled}
-                  onCheckedChange={(v) => setDraft({ ...draft, enabled: v })}
+                <McpToolsSection
+                  server={s}
+                  tools={discoveredTools[s.id]}
+                  loading={toolsLoading[s.id] ?? false}
+                  onDiscover={() => handleDiscoverTools(s)}
                 />
-              </div>
-
-              <div className="flex justify-end gap-2 pt-1">
-                <Button variant="ghost" size="sm" onClick={cancelEdit}>
-                  Cancel
-                </Button>
-                <Button size="sm" onClick={saveDraft}>
-                  Save
-                </Button>
-              </div>
-            </div>
+              </>
+            )}
           </div>
-        )}
+        ))}
       </div>
     </div>
   );

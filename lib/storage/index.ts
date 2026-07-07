@@ -13,6 +13,7 @@ const defaultSettings: Settings = {
   reasoningEffort: 'medium',
   systemInstruction: '',
   mcpServers: [],
+  discoveredTools: {},
 };
 
 const defaultChatHistory: ChatHistory = {

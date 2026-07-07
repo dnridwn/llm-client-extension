@@ -28,6 +28,7 @@ export interface Settings {
   temperature?: number;
   systemInstruction?: string;
   mcpServers: McpServerConfig[];
+  discoveredTools: McpToolsByServer;
 }
 
 export type Role = 'system' | 'user' | 'assistant' | 'tool';
@@ -71,6 +72,8 @@ export interface McpTool {
   description?: string;
   inputSchema: object;
 }
+
+export type McpToolsByServer = Record<string, McpTool[]>;
 
 export type ContentPart =
   | { type: 'text'; text: string }

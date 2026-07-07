@@ -4,6 +4,7 @@ import { TooltipProvider } from '@/components/ui/tooltip';
 import { SettingsScreen } from '@/components/settings/SettingsScreen';
 import { ChatScreen } from '@/components/chat/ChatScreen';
 import { useSettings } from '@/lib/storage';
+import type { McpToolsByServer } from '@/lib/types';
 
 function App() {
   const [settings, setSettings, loaded] = useSettings();
@@ -28,6 +29,12 @@ function App() {
             setSettings(next);
             setView('chat');
           }}
+          onDiscoveredToolsChange={(updater) =>
+            setSettings((prev) => ({
+              ...prev,
+              discoveredTools: updater(prev.discoveredTools ?? {}),
+            }))
+          }
           onBack={isFirstRun ? undefined : () => setView('chat')}
         />
       ) : (

@@ -19,6 +19,11 @@ LLM Client is a Manifest V3 extension whose entire UI lives in the browser side 
 - Collapsible "Thinking" panel, shown while streaming and after the answer
 - Configurable reasoning effort: `minimal` / `low` / `medium` / `high`
 
+**Markdown & rendering**
+- GitHub-Flavored Markdown with `rehype-highlight` syntax highlighting and a custom OKLCH highlight theme
+- Mermaid diagram rendering with copy-code button, in both assistant messages and the Thinking panel
+- Diagrams follow the OS light/dark theme; the `mermaid` package is code-split (loaded on demand)
+
 **Endpoints & models**
 - Any OpenAI-compatible `/v1/chat/completions` + `/v1/models` endpoint
 - Model discovery with a searchable combobox, plus manual entry mode
@@ -39,13 +44,14 @@ LLM Client is a Manifest V3 extension whose entire UI lives in the browser side 
 - Tools are name-prefixed (`serverName__toolName`) to avoid collisions across servers
 - Custom per-server headers with a secret toggle for auth
 - Test / enable / disable / edit / delete per server
+- Per-server MCP tool listing (name + description) in Settings, with manual Discover/Refresh
+- Discovered tools cached in `local:settings` and restored when reopening the Settings panel; re-discovered on Save & Continue
 - Agentic tool loop: parse tool calls, invoke tools, append `tool` messages, continue streaming — up to 10 tool turns
 - Graceful fallback: endpoints that reject tools are retried once without tools and surfaced with a warning
 
 **UI / UX**
 - Side-panel interface opened on action click
 - System-driven light/dark theme via `prefers-color-scheme`
-- GitHub-Flavored Markdown rendering with `rehype-highlight` and a custom OKLCH highlight theme
 - Toast notifications via `sonner`
 - First-run onboarding straight into Settings
 
@@ -66,6 +72,7 @@ LLM Client is a Manifest V3 extension whose entire UI lives in the browser side 
 | Animation           | `tw-animate-css`                                                    |
 | Font                | `@fontsource-variable/figtree`                                      |
 | Markdown            | `react-markdown` + `remark-gfm` + `rehype-highlight` + `highlight.js` |
+| Diagrams            | `mermaid` (code-split, loaded on demand)                            |
 | PDF parsing          | `pdfjs-dist`                                                        |
 | MCP client          | `@modelcontextprotocol/client` (2.0.0-beta.2)                     |
 | State / persistence | React hooks + `wxt/storage` (`storage.local` area)                  |

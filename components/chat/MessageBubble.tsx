@@ -1,4 +1,4 @@
-import { useState, type ComponentPropsWithoutRef } from 'react';
+import { useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeHighlight from 'rehype-highlight';
@@ -15,8 +15,7 @@ import { ThinkingPanel } from '@/components/chat/ThinkingPanel';
 import { ToolCallPanel } from '@/components/chat/ToolCallPanel';
 import { AttachmentChip } from '@/components/chat/AttachmentChip';
 import { LinkifiedText } from '@/components/chat/LinkifiedText';
-import { openExternalUrl } from '@/lib/links';
-import { cn } from '@/lib/utils';
+import { markdownComponents } from '@/components/chat/markdown-components';
 import type { Message } from '@/lib/types';
 
 interface MessageBubbleProps {
@@ -110,51 +109,7 @@ export function MessageBubble({
           <ReactMarkdown
             remarkPlugins={[remarkGfm]}
             rehypePlugins={[rehypeHighlight]}
-            components={{
-              a: ({ href, children, ...props }: ComponentPropsWithoutRef<'a'>) => {
-                if (!href) return <a {...props}>{children}</a>;
-                return (
-                  <a
-                    href={href}
-                    rel="noopener noreferrer"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      openExternalUrl(href);
-                    }}
-                    className="font-medium text-primary underline underline-offset-2 hover:opacity-80"
-                    {...props}
-                  >
-                    {children}
-                  </a>
-                );
-              },
-              pre: ({ children, ...props }: ComponentPropsWithoutRef<'pre'>) => (
-                <pre
-                  className="not-prose overflow-x-auto rounded-md bg-background/60 p-3 text-xs leading-relaxed"
-                  {...props}
-                >
-                  {children}
-                </pre>
-              ),
-              code: ({ className, children, ...props }: ComponentPropsWithoutRef<'code'>) => {
-                const isBlock = /language-/.test(className ?? '');
-                if (isBlock) {
-                  return (
-                    <code className={className} {...props}>
-                      {children}
-                    </code>
-                  );
-                }
-                return (
-                  <code
-                    className="rounded bg-muted/60 px-1 py-0.5 text-xs before:content-none after:content-none"
-                    {...props}
-                  >
-                    {children}
-                  </code>
-                );
-              },
-            }}
+            components={markdownComponents}
           >
             {message.content}
           </ReactMarkdown>

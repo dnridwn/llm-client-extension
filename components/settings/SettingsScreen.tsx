@@ -43,17 +43,27 @@ import { Separator } from '@/components/ui/separator';
 import { Slider } from '@/components/ui/slider';
 import { Badge } from '@/components/ui/badge';
 import { fetchModels } from '@/lib/api';
-import type { ReasoningEffort, Settings } from '@/lib/types';
+import { ensureConnected } from '@/lib/api/mcp';
+import { settingsItem } from '@/lib/storage';
+import type { McpToolsByServer, ReasoningEffort, Settings } from '@/lib/types';
 
 interface SettingsScreenProps {
   settings: Settings;
   onSave: (next: Settings) => void;
+  onDiscoveredToolsChange: (
+    updater: (prev: McpToolsByServer) => McpToolsByServer,
+  ) => void;
   onBack?: () => void;
 }
 
 const URL_REGEX = /^https?:\/\/.+/;
 
-export function SettingsScreen({ settings, onSave, onBack }: SettingsScreenProps) {
+export function SettingsScreen({
+  settings,
+  onSave,
+  onDiscoveredToolsChange,
+  onBack,
+}: SettingsScreenProps) {
   const [baseUrl, setBaseUrl] = useState(settings.baseUrl);
   const [apiKey, setApiKey] = useState(settings.apiKey);
   const [model, setModel] = useState(settings.model);
@@ -165,6 +175,27 @@ export function SettingsScreen({ settings, onSave, onBack }: SettingsScreenProps
       // keep manual entry if fetch fails
     }
 
+    let discoveredTools: McpToolsByServer = settings.discoveredTools ?? {};
+    try {
+      const { tools, errors } = await ensureConnected(mcpServers);
+      const newByServer: McpToolsByServer = {};
+      for (const t of tools) {
+        (newByServer[t.serverId] ??= []).push(t);
+      }
+      const current = await settingsItem.getValue();
+      discoveredTools = {
+        ...(current.discoveredTools ?? {}),
+        ...newByServer,
+      };
+      if (errors.length > 0) {
+        toast.warning(
+          `${errors.length} MCP server(s) failed: ${errors.map((e) => e.name).join(', ')}`,
+        );
+      }
+    } catch {
+      // best-effort, jangan block save
+    }
+
     const next: Settings = {
       baseUrl,
       apiKey,
@@ -175,6 +206,7 @@ export function SettingsScreen({ settings, onSave, onBack }: SettingsScreenProps
       temperature,
       systemInstruction,
       mcpServers,
+      discoveredTools,
     };
     onSave(next);
     toast.success('Settings saved');
@@ -412,6 +444,8 @@ export function SettingsScreen({ settings, onSave, onBack }: SettingsScreenProps
           <McpServersSection
             servers={mcpServers}
             onChange={setMcpServers}
+            discoveredTools={settings.discoveredTools ?? {}}
+            onDiscoveredToolsChange={onDiscoveredToolsChange}
           />
 
         <div className="flex flex-col gap-3">
