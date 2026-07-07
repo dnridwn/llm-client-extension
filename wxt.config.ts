@@ -20,7 +20,8 @@ export default defineConfig({
   manifest: {
     permissions: [
       'sidePanel',
-      'storage'
+      'storage',
+      'tabs'
     ],
     host_permissions: ['<all_urls>']
   }

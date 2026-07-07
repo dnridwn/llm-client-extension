@@ -10,6 +10,7 @@ import {
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
 import { cn } from '@/lib/utils';
+import { openExternalUrl } from '@/lib/links';
 
 interface ThinkingPanelProps {
   reasoning: string;
@@ -64,6 +65,23 @@ export function ThinkingPanel({
               remarkPlugins={[remarkGfm]}
               rehypePlugins={[rehypeHighlight]}
               components={{
+                a: ({ href, children, ...props }: ComponentPropsWithoutRef<'a'>) => {
+                  if (!href) return <a {...props}>{children}</a>;
+                  return (
+                    <a
+                      href={href}
+                      rel="noopener noreferrer"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        openExternalUrl(href);
+                      }}
+                      className="font-medium text-primary underline underline-offset-2 hover:opacity-80"
+                      {...props}
+                    >
+                      {children}
+                    </a>
+                  );
+                },
                 pre: ({ children, ...props }: ComponentPropsWithoutRef<'pre'>) => (
                   <pre
                     className="not-prose overflow-x-auto rounded-md bg-background/60 p-3 text-xs leading-relaxed"

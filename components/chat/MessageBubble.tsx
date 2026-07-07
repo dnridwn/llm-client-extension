@@ -14,6 +14,8 @@ import { Button } from '@/components/ui/button';
 import { ThinkingPanel } from '@/components/chat/ThinkingPanel';
 import { ToolCallPanel } from '@/components/chat/ToolCallPanel';
 import { AttachmentChip } from '@/components/chat/AttachmentChip';
+import { LinkifiedText } from '@/components/chat/LinkifiedText';
+import { openExternalUrl } from '@/lib/links';
 import { cn } from '@/lib/utils';
 import type { Message } from '@/lib/types';
 
@@ -61,7 +63,9 @@ export function MessageBubble({
         </div>
         <div className="flex min-w-0 max-w-[85%] flex-col items-end gap-1">
           <div className="rounded-2xl bg-primary px-3.5 py-2.5 text-sm text-primary-foreground">
-            <p className="whitespace-pre-wrap break-words">{message.content}</p>
+            <p className="whitespace-pre-wrap break-words">
+              <LinkifiedText text={message.content} />
+            </p>
             {message.attachments && message.attachments.length > 0 && (
               <div className="mt-2 flex flex-wrap gap-1.5">
                 {message.attachments.map((a) => (
@@ -107,6 +111,23 @@ export function MessageBubble({
             remarkPlugins={[remarkGfm]}
             rehypePlugins={[rehypeHighlight]}
             components={{
+              a: ({ href, children, ...props }: ComponentPropsWithoutRef<'a'>) => {
+                if (!href) return <a {...props}>{children}</a>;
+                return (
+                  <a
+                    href={href}
+                    rel="noopener noreferrer"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      openExternalUrl(href);
+                    }}
+                    className="font-medium text-primary underline underline-offset-2 hover:opacity-80"
+                    {...props}
+                  >
+                    {children}
+                  </a>
+                );
+              },
               pre: ({ children, ...props }: ComponentPropsWithoutRef<'pre'>) => (
                 <pre
                   className="not-prose overflow-x-auto rounded-md bg-background/60 p-3 text-xs leading-relaxed"
