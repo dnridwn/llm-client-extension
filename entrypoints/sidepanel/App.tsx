@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Toaster } from '@/components/ui/sonner';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { SettingsScreen } from '@/components/settings/SettingsScreen';
@@ -6,11 +6,18 @@ import { ChatScreen } from '@/components/chat/ChatScreen';
 import { useSettings } from '@/lib/storage';
 
 function App() {
-  const [settings, setSettings] = useSettings();
-  const [view, setView] = useState<'chat' | 'settings'>(
-    settings.baseUrl === '' ? 'settings' : 'chat',
-  );
-  const isFirstRun = settings.baseUrl === '';
+  const [settings, setSettings, loaded] = useSettings();
+  const [view, setView] = useState<'chat' | 'settings'>('settings');
+  const [initialized, setInitialized] = useState(false);
+
+  useEffect(() => {
+    if (loaded && !initialized) {
+      setView(settings.baseUrl === '' ? 'settings' : 'chat');
+      setInitialized(true);
+    }
+  }, [loaded, initialized, settings.baseUrl]);
+
+  const isFirstRun = loaded && settings.baseUrl === '';
 
   return (
     <TooltipProvider>

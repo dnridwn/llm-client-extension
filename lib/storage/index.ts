@@ -33,11 +33,16 @@ export const chatHistoryItem = storage.defineItem<ChatHistory>(
 export function useSettings(): [
   Settings,
   (value: Settings | ((prev: Settings) => Settings)) => void,
+  boolean,
 ] {
   const [settings, setSettings] = useState<Settings>(defaultSettings);
+  const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
-    settingsItem.getValue().then(setSettings);
+    settingsItem.getValue().then((v) => {
+      setSettings(v);
+      setLoaded(true);
+    });
     const unwatch = settingsItem.watch((newVal) => {
       setSettings(newVal);
     });
@@ -55,7 +60,7 @@ export function useSettings(): [
     });
   };
 
-  return [settings, update];
+  return [settings, update, loaded];
 }
 
 export function useChatHistory(): [

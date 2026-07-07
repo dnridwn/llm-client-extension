@@ -113,7 +113,7 @@ export function SettingsScreen({ settings, onSave, onBack }: SettingsScreenProps
     try {
       const models = await fetchModels(baseUrl, apiKey);
       setAvailableModels(models);
-      if (models.length > 0 && !isManual) {
+      if (models.length > 0 && !isManual && !models.includes(model)) {
         setModel(models[0]);
       }
       toast.success(`Connection OK — ${models.length} model(s) available`);
