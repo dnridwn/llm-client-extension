@@ -44,6 +44,10 @@ export function ChatScreen({ onOpenSettings }: ChatScreenProps) {
   const [isStreaming, setIsStreaming] = useState(false);
   const [streamingId, setStreamingId] = useState<string | undefined>();
   const abortRef = useRef<AbortController | null>(null);
+  const historyRef = useRef<Message[]>([]);
+  useEffect(() => {
+    historyRef.current = history.messages;
+  }, [history.messages]);
   const rafRef = useRef<number | null>(null);
   const pendingDeltaRef = useRef<{ content: string; reasoning: string }>({
     content: '',
@@ -243,7 +247,6 @@ export function ChatScreen({ onOpenSettings }: ChatScreenProps) {
 
   async function handleToolsAfterStream(
     assistantId: string,
-    allMessages: Message[],
     turn: number,
   ): Promise<void> {
     const calls = pendingToolCallsRef.current.filter(
@@ -255,17 +258,6 @@ export function ChatScreen({ onOpenSettings }: ChatScreenProps) {
     const finalContent = pendingDeltaRef.current.content || '';
     const finalReasoning = pendingDeltaRef.current.reasoning || '';
     pendingDeltaRef.current = { content: '', reasoning: '' };
-
-    const updatedAssistant: Message[] = allMessages.map((m) =>
-      m.id === assistantId
-        ? {
-            ...m,
-            content: m.content + finalContent,
-            reasoning: (m.reasoning ?? '') + finalReasoning,
-            tool_calls: calls,
-          }
-        : m,
-    );
 
     const toolMessages: Message[] = new Array(calls.length);
     await Promise.all(
@@ -323,10 +315,18 @@ export function ChatScreen({ onOpenSettings }: ChatScreenProps) {
       }),
     );
 
-    const withTools: Message[] = [...updatedAssistant, ...toolMessages];
-    setHistory({ messages: withTools });
-
     if (turn + 1 >= MAX_TOOL_TURNS) {
+      const currentMessages = historyRef.current.map((m) =>
+        m.id === assistantId
+          ? {
+              ...m,
+              content: m.content + finalContent,
+              reasoning: (m.reasoning ?? '') + finalReasoning,
+              tool_calls: calls,
+            }
+          : m,
+      ).concat(toolMessages);
+      setHistory({ messages: currentMessages });
       toast.error('Max tool turns reached — stopping.');
       setIsStreaming(false);
       setStreamingId(undefined);
@@ -334,18 +334,30 @@ export function ChatScreen({ onOpenSettings }: ChatScreenProps) {
       return;
     }
 
+    const nextAssistantId = crypto.randomUUID();
     const nextAssistant: Message = {
-      id: crypto.randomUUID(),
+      id: nextAssistantId,
       role: 'assistant',
       content: '',
       reasoning: '',
       createdAt: Date.now(),
       model: settings.model,
     };
-    const withAssistant: Message[] = [...withTools, nextAssistant];
+
+    const updated = historyRef.current.map((m) =>
+      m.id === assistantId
+        ? {
+            ...m,
+            content: m.content + finalContent,
+            reasoning: (m.reasoning ?? '') + finalReasoning,
+            tool_calls: calls,
+          }
+        : m,
+    );
+    const withAssistant: Message[] = [...updated, ...toolMessages, nextAssistant];
     setHistory({ messages: withAssistant });
 
-    await runStream(withAssistant, nextAssistant.id, turn + 1);
+    await runStream(withAssistant, nextAssistantId, turn + 1);
   }
 
   async function runStream(allMessages: Message[], assistantId: string, turn = 0) {
@@ -388,7 +400,7 @@ export function ChatScreen({ onOpenSettings }: ChatScreenProps) {
             rafRef.current = null;
           }
           if (pendingToolCallsRef.current.length > 0) {
-            void handleToolsAfterStream(assistantId, allMessages, turn).catch((e) => {
+            void handleToolsAfterStream(assistantId, turn).catch((e) => {
               toast.error(`Tool execution failed: ${e instanceof Error ? e.message : String(e)}`);
               setIsStreaming(false);
               setStreamingId(undefined);
@@ -459,7 +471,7 @@ export function ChatScreen({ onOpenSettings }: ChatScreenProps) {
       model: settings.model,
     };
 
-    const newMessages = [...history.messages, userMessage, assistantMessage];
+    const newMessages = [...historyRef.current, userMessage, assistantMessage];
     setHistory({ messages: newMessages });
 
     void runStream(newMessages, assistantMessage.id, 0);
@@ -477,7 +489,7 @@ export function ChatScreen({ onOpenSettings }: ChatScreenProps) {
 
   function handleRegenerate() {
     if (isStreaming) return;
-    const msgs = history.messages;
+    const msgs = historyRef.current;
     let lastUserIndex = -1;
     for (let i = msgs.length - 1; i >= 0; i--) {
       if (msgs[i].role === 'user') {

@@ -7,7 +7,6 @@ import {
   Refresh01Icon,
   User02Icon,
   CheckmarkCircle02Icon,
-  FunctionIcon,
 } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon, type IconSvgElement } from '@hugeicons/react';
 import { Button } from '@/components/ui/button';
@@ -84,18 +83,6 @@ export function MessageBubble({
         <p className="mb-1 text-xs font-medium text-muted-foreground">
           {message.model}
         </p>
-      )}
-      {message.tool_calls && message.tool_calls.length > 0 && (
-        <div className="mb-1 flex flex-wrap items-center gap-1 text-xs text-muted-foreground">
-          <HugeiconsIcon icon={FunctionIcon as IconSvgElement} className="size-3.5" />
-          <span>Called: </span>
-          {message.tool_calls.map((c, i) => (
-            <code key={i} className="font-mono text-foreground">
-              {c.function.name}
-              {i < message.tool_calls!.length - 1 ? ', ' : ''}
-            </code>
-          ))}
-        </div>
       )}
       {showReasoning && (
         <ThinkingPanel
